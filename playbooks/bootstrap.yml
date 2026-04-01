@@ -1,0 +1,8 @@
+---
+- name: Bootstrap Ubuntu VM
+  hosts: bootstrap
+  become: true
+  roles:
+    - common
+    - bootstrap
+    - docker

@@ -1,0 +1,66 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Upgrade installed packages
+  ansible.builtin.apt:
+    upgrade: dist
+  when: bootstrap_upgrade_packages
+
+- name: Install common packages
+  ansible.builtin.apt:
+    name: "{{ bootstrap_common_packages }}"
+    state: present
+  when: bootstrap_common_packages | length > 0
+
+- name: Install qemu guest agent when requested
+  ansible.builtin.apt:
+    name: qemu-guest-agent
+    state: present
+  when: bootstrap_enable_qemu_guest_agent
+
+- name: Configure timezone
+  community.general.timezone:
+    name: "{{ bootstrap_timezone }}"
+
+- name: Enable qemu guest agent when installed
+  ansible.builtin.service:
+    name: qemu-guest-agent
+    state: started
+    enabled: true
+  when: bootstrap_enable_qemu_guest_agent
+
+- name: Install UFW when firewall management is enabled
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  when: bootstrap_enable_ufw
+
+- name: Allow selected TCP ports through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop: "{{ bootstrap_ufw_allowed_tcp_ports }}"
+  when: bootstrap_enable_ufw
+
+- name: Enable UFW with default deny policy
+  community.general.ufw:
+    state: enabled
+    policy: deny
+  when: bootstrap_enable_ufw
+
+- name: Remove obsolete packages
+  ansible.builtin.apt:
+    autoremove: true
+    purge: true
+
+- name: Reboot after package upgrade when requested
+  ansible.builtin.reboot:
+    msg: Reboot triggered by Ansible after package upgrades
+    reboot_timeout: 900
+  when:
+    - bootstrap_upgrade_packages
+    - bootstrap_reboot_after_upgrade

@@ -1,0 +1,9 @@
+---
+bootstrap_common_packages: []
+bootstrap_upgrade_packages: true
+bootstrap_reboot_after_upgrade: false
+bootstrap_timezone: UTC
+bootstrap_enable_qemu_guest_agent: false
+bootstrap_enable_ufw: false
+bootstrap_ufw_allowed_tcp_ports:
+  - 22
