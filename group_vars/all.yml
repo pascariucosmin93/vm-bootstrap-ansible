@@ -2,22 +2,22 @@
 ansible_user: ubuntu
 ansible_ssh_private_key_file: ~/.ssh/id_ed25519
 
-vm_hostname: vm-rui
-vm_admin_user: cosmin
-vm_admin_groups:
+bootstrap_hostname: vm-rui
+bootstrap_admin_user: cosmin
+bootstrap_admin_groups:
   - sudo
-vm_admin_shell: /bin/bash
-vm_admin_ssh_keys: []
-vm_enable_passwordless_sudo: true
+bootstrap_admin_shell: /bin/bash
+bootstrap_admin_ssh_keys: []
+bootstrap_enable_passwordless_sudo: true
 
-bootstrap_upgrade_packages: true
-bootstrap_reboot_after_upgrade: false
-bootstrap_timezone: Europe/Bucharest
-bootstrap_enable_qemu_guest_agent: true
-bootstrap_enable_ufw: false
-bootstrap_ufw_allowed_tcp_ports:
+common_upgrade_packages: true
+common_reboot_after_upgrade: false
+common_timezone: Europe/Bucharest
+common_enable_qemu_guest_agent: true
+common_enable_ufw: false
+common_ufw_allowed_tcp_ports:
   - 22
-bootstrap_common_packages:
+common_packages:
   - apt-transport-https
   - ca-certificates
   - curl
@@ -31,4 +31,4 @@ bootstrap_common_packages:
   - vim
 
 docker_users:
-  - "{{ vm_admin_user }}"
+  - "{{ bootstrap_admin_user }}"

@@ -6,32 +6,32 @@
 
 - name: Configure hostname when provided
   ansible.builtin.hostname:
-    name: "{{ vm_hostname }}"
-  when: vm_hostname | length > 0
+    name: "{{ bootstrap_hostname }}"
+  when: bootstrap_hostname | length > 0
 
 - name: Ensure admin user exists
   ansible.builtin.user:
-    name: "{{ vm_admin_user }}"
-    groups: "{{ vm_admin_groups | join(',') }}"
+    name: "{{ bootstrap_admin_user }}"
+    groups: "{{ bootstrap_admin_groups | join(',') }}"
     append: true
-    shell: "{{ vm_admin_shell }}"
+    shell: "{{ bootstrap_admin_shell }}"
     create_home: true
     state: present
 
 - name: Authorize SSH keys for admin user
   ansible.posix.authorized_key:
-    user: "{{ vm_admin_user }}"
+    user: "{{ bootstrap_admin_user }}"
     key: "{{ item }}"
     state: present
-  loop: "{{ vm_admin_ssh_keys }}"
-  when: vm_admin_ssh_keys | length > 0
+  loop: "{{ bootstrap_admin_ssh_keys }}"
+  when: bootstrap_admin_ssh_keys | length > 0
 
 - name: Allow passwordless sudo for admin user
   ansible.builtin.copy:
-    dest: "/etc/sudoers.d/90-{{ vm_admin_user }}"
-    content: "{{ vm_admin_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    dest: "/etc/sudoers.d/90-{{ bootstrap_admin_user }}"
+    content: "{{ bootstrap_admin_user }} ALL=(ALL) NOPASSWD:ALL\n"
     owner: root
     group: root
     mode: "0440"
     validate: "visudo -cf %s"
-  when: vm_enable_passwordless_sudo
+  when: bootstrap_enable_passwordless_sudo

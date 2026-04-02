@@ -1,8 +1,8 @@
 ---
-vm_hostname: ""
-vm_admin_user: devops
-vm_admin_groups:
+bootstrap_hostname: ""
+bootstrap_admin_user: devops
+bootstrap_admin_groups:
   - sudo
-vm_admin_shell: /bin/bash
-vm_admin_ssh_keys: []
-vm_enable_passwordless_sudo: true
+bootstrap_admin_shell: /bin/bash
+bootstrap_admin_ssh_keys: []
+bootstrap_enable_passwordless_sudo: true
