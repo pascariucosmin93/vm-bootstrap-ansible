@@ -1,2 +1,3 @@
 ---
-- import_playbook: bootstrap.yml
+- name: Bootstrap all VMs
+  import_playbook: bootstrap.yml
