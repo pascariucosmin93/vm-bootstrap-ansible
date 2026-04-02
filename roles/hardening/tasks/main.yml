@@ -1,0 +1,121 @@
+---
+- name: Install hardening packages
+  ansible.builtin.apt:
+    name:
+      - unattended-upgrades
+      - apt-listchanges
+      - auditd
+      - audispd-plugins
+    state: present
+    update_cache: false
+
+# --- SSH hardening ---
+- name: Configure SSH daemon
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+    validate: "sshd -t -f %s"
+  loop:
+    - { regexp: '^#?Port ', line: "Port {{ hardening_ssh_port }}" }
+    - { regexp: '^#?PermitRootLogin ', line: "PermitRootLogin {{ hardening_ssh_permit_root_login }}" }
+    - { regexp: '^#?PasswordAuthentication ', line: "PasswordAuthentication {{ hardening_ssh_password_authentication }}" }
+    - { regexp: '^#?MaxAuthTries ', line: "MaxAuthTries {{ hardening_ssh_max_auth_tries }}" }
+    - { regexp: '^#?ClientAliveInterval ', line: "ClientAliveInterval {{ hardening_ssh_client_alive_interval }}" }
+    - { regexp: '^#?ClientAliveCountMax ', line: "ClientAliveCountMax {{ hardening_ssh_client_alive_count_max }}" }
+    - { regexp: '^#?AllowAgentForwarding ', line: "AllowAgentForwarding {{ hardening_ssh_allow_agent_forwarding }}" }
+    - { regexp: '^#?AllowTcpForwarding ', line: "AllowTcpForwarding {{ hardening_ssh_allow_tcp_forwarding }}" }
+    - { regexp: '^#?X11Forwarding ', line: "X11Forwarding {{ hardening_ssh_x11_forwarding }}" }
+  notify: Restart sshd
+
+# --- fail2ban ---
+- name: Configure fail2ban jail for SSH
+  ansible.builtin.copy:
+    dest: /etc/fail2ban/jail.d/sshd.conf
+    content: |
+      [sshd]
+      enabled  = true
+      port     = {{ hardening_ssh_port }}
+      maxretry = {{ hardening_fail2ban_ssh_maxretry }}
+      bantime  = {{ hardening_fail2ban_ssh_bantime }}
+      findtime = {{ hardening_fail2ban_ssh_findtime }}
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart fail2ban
+
+- name: Enable and start fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: true
+
+# --- unattended-upgrades ---
+- name: Configure unattended-upgrades
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    content: |
+      Unattended-Upgrade::Allowed-Origins {
+          "${distro_id}:${distro_codename}-security";
+      };
+      Unattended-Upgrade::Remove-Unused-Dependencies "true";
+      Unattended-Upgrade::Automatic-Reboot "{{ hardening_unattended_reboot | lower }}";
+      Unattended-Upgrade::Automatic-Reboot-Time "{{ hardening_unattended_reboot_time }}";
+    owner: root
+    group: root
+    mode: "0644"
+  when: hardening_enable_unattended_upgrades
+
+- name: Enable unattended-upgrades service
+  ansible.builtin.service:
+    name: unattended-upgrades
+    state: started
+    enabled: true
+  when: hardening_enable_unattended_upgrades
+
+# --- sysctl hardening ---
+- name: Apply sysctl hardening settings
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/99-hardening.conf
+  loop: "{{ hardening_sysctl_settings | dict2items }}"
+
+# --- auditd ---
+- name: Enable and start auditd
+  ansible.builtin.service:
+    name: auditd
+    state: started
+    enabled: true
+
+- name: Configure basic audit rules
+  ansible.builtin.copy:
+    dest: /etc/audit/rules.d/hardening.rules
+    content: |
+      # Delete all existing rules
+      -D
+
+      # Set buffer size
+      -b 8192
+
+      # Monitor sudoers changes
+      -w /etc/sudoers -p wa -k sudoers_changes
+      -w /etc/sudoers.d/ -p wa -k sudoers_changes
+
+      # Monitor SSH config changes
+      -w /etc/ssh/sshd_config -p wa -k sshd_config
+
+      # Monitor user/group changes
+      -w /etc/passwd -p wa -k user_changes
+      -w /etc/group -p wa -k group_changes
+      -w /etc/shadow -p wa -k shadow_changes
+
+      # Monitor privileged commands
+      -a always,exit -F arch=b64 -S execve -F euid=0 -k privileged
+    owner: root
+    group: root
+    mode: "0640"
+  notify: Reload auditd

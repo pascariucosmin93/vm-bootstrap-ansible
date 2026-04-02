@@ -1,0 +1,45 @@
+---
+# SSH hardening
+hardening_ssh_port: 22
+hardening_ssh_permit_root_login: "no"
+hardening_ssh_password_authentication: "no"
+hardening_ssh_max_auth_tries: 3
+hardening_ssh_client_alive_interval: 300
+hardening_ssh_client_alive_count_max: 2
+hardening_ssh_allow_agent_forwarding: "no"
+hardening_ssh_allow_tcp_forwarding: "no"
+hardening_ssh_x11_forwarding: "no"
+
+# fail2ban
+hardening_fail2ban_ssh_maxretry: 5
+hardening_fail2ban_ssh_bantime: 3600
+hardening_fail2ban_ssh_findtime: 600
+
+# unattended-upgrades
+hardening_enable_unattended_upgrades: true
+hardening_unattended_reboot: false
+hardening_unattended_reboot_time: "03:00"
+
+# sysctl
+hardening_sysctl_settings:
+  # disable IP source routing
+  net.ipv4.conf.all.accept_source_route: 0
+  net.ipv6.conf.all.accept_source_route: 0
+  # disable ICMP redirects
+  net.ipv4.conf.all.accept_redirects: 0
+  net.ipv6.conf.all.accept_redirects: 0
+  net.ipv4.conf.all.send_redirects: 0
+  # enable SYN flood protection
+  net.ipv4.tcp_syncookies: 1
+  # ignore ICMP broadcast requests
+  net.ipv4.icmp_echo_ignore_broadcasts: 1
+  # ignore bogus ICMP responses
+  net.ipv4.icmp_ignore_bogus_error_responses: 1
+  # log martian packets
+  net.ipv4.conf.all.log_martians: 1
+  # disable IPv6 if not needed
+  net.ipv6.conf.all.disable_ipv6: 0
+  # kernel hardening
+  kernel.dmesg_restrict: 1
+  kernel.kptr_restrict: 2
+  fs.suid_dumpable: 0
