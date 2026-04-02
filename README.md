@@ -1,106 +1,106 @@
 # vm-bootstrap-ansible
 
-Ansible project for preparing a fresh Ubuntu VM for Docker-based workloads and follow-up automation.
+Ansible project for bootstrapping fresh Ubuntu VMs — sets up system packages, admin user, security hardening, and Docker before any higher-level automation (Kubernetes, GitOps, CI runners) takes over.
 
-This repo is designed as a clean bootstrap layer you can run before higher-level automation such as `k3s`, GitOps, CI runners, or self-hosted services.
+## Roles
 
-## Features
+| Role | Responsibility |
+|------|---------------|
+| `common` | Package updates, timezone, qemu-guest-agent, UFW |
+| `bootstrap` | Hostname, admin user, SSH keys, passwordless sudo |
+| `hardening` | SSH config, fail2ban, unattended-upgrades, sysctl, auditd |
+| `docker` | Docker CE installation from official repository |
 
-The bootstrap flow handles:
+Roles run in order: `common → bootstrap → hardening → docker`
 
-- package update and distribution upgrade
-- common CLI tooling for day-to-day administration
-- hostname configuration
-- admin user creation
-- passwordless sudo setup
-- optional SSH key provisioning
-- Docker installation from the official Docker repository
-- optional `qemu-guest-agent` installation
-- optional UFW firewall enablement
+## Requirements
 
-## Structure
+- Ansible 2.14+
+- Target: Ubuntu 22.04 / 24.04
+- SSH access to target VM with a user that has sudo
 
-```text
-.
-├── .gitignore
-├── ansible.cfg
-├── group_vars/
-├── inventory/
-├── playbooks/
-├── requirements.yml
-└── roles/
-```
-
-## Repository layout
-
-- `playbooks/bootstrap.yml` runs the VM preparation flow
-- `playbooks/site.yml` provides a simple entry point
-- `roles/common` manages package updates, timezone, firewall and guest agent
-- `roles/bootstrap` manages hostname, admin user and sudoers
-- `roles/docker` installs and enables Docker
-
-## Quick Start
-
-Install collections:
+Install required collections:
 
 ```bash
 ansible-galaxy collection install -r requirements.yml
 ```
 
-Edit inventory:
+## Usage
+
+**1. Add your VM to the inventory:**
 
 ```ini
+# inventory/hosts.ini
 [bootstrap]
-vm-rui ansible_host=192.168.1.50
+my-vm ansible_host=192.168.1.50
 ```
 
-Edit shared vars in `group_vars/all.yml`:
+**2. Configure variables in `group_vars/all.yml`:**
 
 ```yaml
 ansible_user: ubuntu
-vm_hostname: vm-rui
-vm_admin_user: cosmin
-vm_admin_ssh_keys:
+ansible_ssh_private_key_file: ~/.ssh/id_ed25519
+
+bootstrap_hostname: my-vm
+bootstrap_admin_user: cosmin
+bootstrap_admin_ssh_keys:
   - ssh-ed25519 AAAA...
-bootstrap_enable_ufw: true
+
+common_timezone: Europe/Bucharest
+common_enable_qemu_guest_agent: true
 ```
 
-Run the bootstrap playbook:
+**3. Run:**
 
 ```bash
 ansible-playbook playbooks/bootstrap.yml
 ```
 
-Or use the aggregate entry point:
+## Variables
 
-```bash
-ansible-playbook playbooks/site.yml
-```
+### common
 
-## Example Outcome
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `common_packages` | `[]` | Extra packages to install |
+| `common_upgrade_packages` | `true` | Run dist-upgrade |
+| `common_reboot_after_upgrade` | `false` | Reboot after upgrade |
+| `common_timezone` | `UTC` | System timezone |
+| `common_enable_qemu_guest_agent` | `false` | Install qemu-guest-agent |
+| `common_enable_ufw` | `false` | Enable UFW firewall |
+| `common_ufw_allowed_tcp_ports` | `[22]` | TCP ports to allow through UFW |
 
-After a successful run, the target VM should have:
+### bootstrap
 
-- updated packages
-- a dedicated admin user with sudo access
-- passwordless sudo when enabled
-- Docker installed and running
-- optional firewall rules applied through UFW
-- optional guest agent enabled for VM environments
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `bootstrap_hostname` | `""` | Hostname to set (skipped if empty) |
+| `bootstrap_admin_user` | `devops` | Admin user to create |
+| `bootstrap_admin_groups` | `[sudo]` | Groups for admin user |
+| `bootstrap_admin_shell` | `/bin/bash` | Shell for admin user |
+| `bootstrap_admin_ssh_keys` | `[]` | SSH public keys to authorize |
+| `bootstrap_enable_passwordless_sudo` | `true` | Enable passwordless sudo |
 
-## Notes
+### hardening
 
-- The inventory and variables are intentionally simple so the repo is easy to demo.
-- For a real environment, split variables into `group_vars` and `host_vars` per VM.
-- If you use Proxmox, VMware or another virtualized environment, `qemu-guest-agent` is a practical addition for better VM management.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `hardening_ssh_port` | `22` | SSH port |
+| `hardening_ssh_permit_root_login` | `no` | Allow root SSH login |
+| `hardening_ssh_password_authentication` | `no` | Allow password auth |
+| `hardening_ssh_max_auth_tries` | `3` | Max SSH auth attempts |
+| `hardening_fail2ban_ssh_maxretry` | `5` | fail2ban max retries |
+| `hardening_fail2ban_ssh_bantime` | `3600` | fail2ban ban duration (seconds) |
+| `hardening_enable_unattended_upgrades` | `true` | Enable auto security updates |
+| `hardening_unattended_reboot` | `false` | Allow automatic reboot |
+| `hardening_sysctl_settings` | see defaults | Kernel/network hardening params |
 
-## Push to GitHub
+### docker
 
-```bash
-git init
-git remote add origin git@github.com:pascariucosmin93/vm-bootstrap-ansible.git
-git add .
-git commit -m "Add VM bootstrap Ansible setup"
-git branch -M main
-git push -u origin main
-```
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `docker_users` | `[]` | Users to add to the docker group |
+
+## CI
+
+Pull requests run `ansible-lint` and syntax check via GitHub Actions.
